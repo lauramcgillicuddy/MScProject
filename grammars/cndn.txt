@@ -1,0 +1,16 @@
+# Grammar: c^n d^n
+# Type: Context-Free
+# Example strings: cd, ccdd, cccdd, ...
+# Same structure as a^n b^n but with different terminal symbols.
+# Use alongside anbn to test whether models learn the abstract rule
+# rather than memorising specific symbols.
+
+NAME cndn
+TYPE cfg
+NONTERMINALS S
+TERMINALS c d
+START S
+
+RULES
+S -> c S d
+S -> c d

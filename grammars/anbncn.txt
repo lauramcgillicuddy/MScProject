@@ -1,0 +1,10 @@
+# Grammar: a^n b^n c^n
+# Type: Context-Sensitive (cannot be expressed as a CFG)
+# Example strings: abc, aabbcc, aaabbbccc, ...
+# Demonstrates: cross-serial dependency — model must count across 3 symbol groups.
+# Key comparison: can LSTMs/Transformers handle this where CFGs provably cannot?
+
+NAME anbncn
+TYPE direct
+TERMINALS a b c
+PATTERN a:n b:n c:n

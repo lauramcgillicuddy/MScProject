@@ -1,0 +1,17 @@
+# Grammar: Hierarchical — S derives to X, X derives to c^n d^n
+# Type: Context-Free, two non-terminals
+# Example strings: cd, ccdd, cccdd, ...
+# Barry's note: "S -> X, X = c^n d^n" — demonstrates deep non-terminal expansion.
+# Same surface strings as cndn.txt but with an extra layer of derivation.
+# Use to test whether extra hierarchical structure affects what the model encodes.
+
+NAME hierarchical
+TYPE cfg
+NONTERMINALS S X
+TERMINALS c d
+START S
+
+RULES
+S -> X
+X -> c X d
+X -> c d

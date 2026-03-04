@@ -1,0 +1,15 @@
+# Grammar: a^n b^n
+# Type: Context-Free
+# Example strings: ab, aabb, aaabbb, ...
+# Demonstrates: balanced long-range dependency (counting a's must match b's)
+# Classic probe target: does the model learn to count?
+
+NAME anbn
+TYPE cfg
+NONTERMINALS S
+TERMINALS a b
+START S
+
+RULES
+S -> a S b
+S -> a b
