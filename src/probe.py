@@ -44,19 +44,7 @@ def extract_hidden_states_lstm(model: LSTMLanguageModel, batch: torch.Tensor):
     """
     model.eval()
     with torch.no_grad():
-        emb = model.embedding(batch)
-        layer_hiddens = []
-        h = emb
-        for layer in model.lstm._all_weights:
-            # TODO: nn.LSTM doesn't expose per-layer outputs directly.
-            # Options:
-            #   (a) Use a stack of nn.LSTMCell — gives full per-layer control.
-            #   (b) Register forward hooks on each layer.
-            # For now, only the final layer output is available via model.lstm(emb).
-            pass
-        out, _ = model.lstm(emb)
-        # Placeholder: return only final layer until per-layer extraction is added
-        layer_hiddens = [out]
+        _, layer_hiddens = model(batch, return_hidden=True)
     return layer_hiddens
 
 
@@ -266,14 +254,19 @@ def main():
         print(f"  Layer {layer_idx + 1}: {acc:.4f}")
         accuracies.append(acc)
 
-    # TODO: visualise as heatmap using matplotlib
-    # import matplotlib.pyplot as plt
-    # plt.bar(range(1, len(accuracies)+1), accuracies)
-    # plt.xlabel('Layer'); plt.ylabel('Probe accuracy')
-    # plt.title(f'{ckpt["grammar_name"]} — {model_type}')
-    # Path(args.figures_dir).mkdir(parents=True, exist_ok=True)
-    # plt.savefig(f'{args.figures_dir}/{ckpt["grammar_name"]}_{model_type}_probe.png')
-    # print(f"\nFigure saved to {args.figures_dir}/")
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.bar(range(1, len(accuracies) + 1), accuracies)
+    ax.set_xlabel('Layer')
+    ax.set_ylabel('Probe accuracy')
+    ax.set_title(f'{ckpt["grammar_name"]} — {model_type}')
+    ax.set_ylim(0, 1)
+    ax.set_xticks(range(1, len(accuracies) + 1))
+    Path(args.figures_dir).mkdir(parents=True, exist_ok=True)
+    out_path = f'{args.figures_dir}/{ckpt["grammar_name"]}_{model_type}_probe.png'
+    fig.tight_layout()
+    fig.savefig(out_path)
+    print(f"\nFigure saved to {out_path}")
 
 
 if __name__ == '__main__':

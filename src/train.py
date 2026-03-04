@@ -59,14 +59,23 @@ def collate_fn(batch, pad_id: int):
 # ---------------------------------------------------------------------------
 
 class LSTMLanguageModel(nn.Module):
-    """Vanilla LSTM language model. Hidden states used for probing."""
+    """
+    LSTM language model built from a stack of LSTMCells.
+
+    Using LSTMCell instead of nn.LSTM gives direct access to each layer's
+    hidden state at every timestep, which is required for layer-wise probing.
+    """
 
     def __init__(self, vocab_size: int, embed_dim: int = 64, hidden_dim: int = 256,
                  num_layers: int = 2, dropout: float = 0.1):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=0)
-        self.lstm = nn.LSTM(embed_dim, hidden_dim, num_layers=num_layers,
-                            batch_first=True, dropout=dropout if num_layers > 1 else 0.0)
+        # First cell takes embeddings; subsequent cells take previous hidden state
+        self.cells = nn.ModuleList([
+            nn.LSTMCell(embed_dim if i == 0 else hidden_dim, hidden_dim)
+            for i in range(num_layers)
+        ])
+        self.dropout = nn.Dropout(dropout)
         self.output_proj = nn.Linear(hidden_dim, vocab_size)
         self.num_layers = num_layers
         self.hidden_dim = hidden_dim
@@ -75,13 +84,32 @@ class LSTMLanguageModel(nn.Module):
         """
         x: (batch, seq_len) token IDs
         Returns logits (batch, seq_len, vocab_size).
-        If return_hidden=True, also returns all hidden states per layer.
+        If return_hidden=True, also returns a list of (B, T, H) tensors — one per layer.
         """
+        B, T = x.shape
         emb = self.embedding(x)                         # (B, T, E)
-        out, _ = self.lstm(emb)                         # (B, T, H)
-        logits = self.output_proj(out)                  # (B, T, V)
+
+        # Initialise hidden/cell states for each layer
+        h = [torch.zeros(B, self.hidden_dim, device=x.device) for _ in self.cells]
+        c = [torch.zeros(B, self.hidden_dim, device=x.device) for _ in self.cells]
+
+        # layer_outputs[i] accumulates hidden states for layer i across timesteps
+        layer_outputs = [[] for _ in self.cells]
+
+        for t in range(T):
+            inp = emb[:, t, :]                          # (B, E)
+            for i, cell in enumerate(self.cells):
+                h[i], c[i] = cell(inp, (h[i], c[i]))   # (B, H)
+                inp = self.dropout(h[i])                # feed into next layer
+                layer_outputs[i].append(h[i])
+
+        # Stack timesteps: each entry becomes (B, T, H)
+        layer_hiddens = [torch.stack(steps, dim=1) for steps in layer_outputs]
+
+        logits = self.output_proj(layer_hiddens[-1])    # (B, T, V)
+
         if return_hidden:
-            return logits, out                          # out = final layer activations
+            return logits, layer_hiddens
         return logits
 
 
